@@ -11,6 +11,7 @@ import UIKit
 open class WSTagView: UIView, UITextInputTraits {
 
     fileprivate let textLabel = UILabel()
+    fileprivate let button = UIButton()
 
     open var displayText: String = "" {
         didSet {
@@ -112,11 +113,23 @@ open class WSTagView: UIView, UITextInputTraits {
         selectedColor = .gray
         selectedTextColor = .black
 
-        textLabel.frame = CGRect(x: layoutMargins.left, y: layoutMargins.top, width: 0, height: 0)
+        textLabel.translatesAutoresizingMaskIntoConstraints = false
         textLabel.font = font
         textLabel.textColor = .white
         textLabel.backgroundColor = .clear
         addSubview(textLabel)
+
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.titleLabel?.font = font
+        button.setTitleColor(.white, for: .normal)
+        button.backgroundColor = .clear
+        button.addTarget(self, action: #selector(buttonPressed(sender:)), for: .touchUpInside)
+        addSubview(button)
+
+        let views = ["textLabel": textLabel, "button": button]
+        let metrics = ["left": layoutMargins.left, "right": layoutMargins.right, "top": layoutMargins.top, "bottom": layoutMargins.bottom]
+        addConstraints(NSLayoutConstraint.constraints(withVisualFormat: "H:|-left-[textLabel][button]-right-|", options: [.alignAllTop, .alignAllBottom], metrics: metrics, views: views))
+        addConstraints(NSLayoutConstraint.constraints(withVisualFormat: "V:|-top-[textLabel]-bottom-|", metrics: metrics, views: views))
 
         self.displayText = tag.text
         updateLabelText()
@@ -129,6 +142,11 @@ open class WSTagView: UIView, UITextInputTraits {
     public required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
         assert(false, "Not implemented")
+    }
+
+    @objc
+    fileprivate func buttonPressed(sender: Any) {
+        onDidRequestDelete?(self, nil)
     }
 
     // MARK: - Styling
@@ -166,7 +184,8 @@ open class WSTagView: UIView, UITextInputTraits {
 
     open override var intrinsicContentSize: CGSize {
         let labelIntrinsicSize = textLabel.intrinsicContentSize
-        return CGSize(width: labelIntrinsicSize.width + layoutMargins.left + layoutMargins.right,
+        let buttonIntrinsicSize = displayDelimiter.isEmpty ? CGSize.zero : button.intrinsicContentSize
+        return CGSize(width: labelIntrinsicSize.width + buttonIntrinsicSize.width + layoutMargins.left + layoutMargins.right,
                       height: labelIntrinsicSize.height + layoutMargins.top + layoutMargins.bottom)
     }
 
@@ -176,7 +195,8 @@ open class WSTagView: UIView, UITextInputTraits {
         let fittingSize = CGSize(width: size.width - layoutMarginsHorizontal,
                                  height: size.height - layoutMarginsVertical)
         let labelSize = textLabel.sizeThatFits(fittingSize)
-        return CGSize(width: labelSize.width + layoutMarginsHorizontal,
+        let buttonSize = button.sizeThatFits(fittingSize)
+        return CGSize(width: labelSize.width + buttonSize.width + layoutMarginsHorizontal,
                       height: labelSize.height + layoutMarginsVertical)
     }
 
@@ -191,10 +211,16 @@ open class WSTagView: UIView, UITextInputTraits {
     // MARK: - Attributed Text
     fileprivate func updateLabelText() {
         // Unselected shows "[displayText]," and selected is "[displayText]"
-        textLabel.text = displayText + displayDelimiter
+        textLabel.text = displayText
+        button.setTitle(displayDelimiter, for: .normal)
+
         // Expand Label
         let intrinsicSize = self.intrinsicContentSize
         frame = CGRect(x: 0, y: 0, width: intrinsicSize.width, height: intrinsicSize.height)
+        
+        setNeedsUpdateConstraints()
+        updateConstraintsIfNeeded()
+        layoutIfNeeded()
     }
 
     // MARK: - Laying out
